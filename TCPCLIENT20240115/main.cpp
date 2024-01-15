@@ -1,57 +1,110 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #include <iostream>
-#include <WinSock2.h>
+#include <winsock2.h>
 #include <WS2tcpip.h>
+
+using namespace std;
 
 #pragma comment(lib, "ws2_32")
 
-using namespace std;
+#pragma pack(push, 1)
+
+typedef struct _Data
+{
+	int FirstNumber;
+	int SecondNumber;
+	char Operator;
+} Data;
+
+typedef struct _Header
+{
+	u_short Code;
+	u_short Size; 
+} Header;
+
+
+
+#pragma pack(pop)
+
 
 int main()
 {
 	WSAData wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	HOSTENT* ServerInfo;
-	//ServerInfo = gethostbyname("naver.com");
-	/*
-	if (ServerInfo)
+	SOCKET ServerSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	struct sockaddr_in ServerSockAddr;
+	memset(&ServerSockAddr, 0, sizeof(ServerSockAddr));
+	ServerSockAddr.sin_family = AF_INET;
+	inet_pton(AF_INET, "127.0.0.1", &(ServerSockAddr.sin_addr.s_addr));
+	ServerSockAddr.sin_port = htons(5001);
+
+	connect(ServerSocket, (struct sockaddr*)&ServerSockAddr, sizeof(ServerSockAddr));
+
+	while (true)
 	{
-		if (ServerInfo->h_addrtype == AF_INET)
+		char Buffer[1024] = { 0, };
+		int RecvByte = recv(ServerSocket, Buffer, 1024, 0);
+		if (RecvByte <= 0)
 		{
-			cout << ServerInfo->h_name << endl;
-			int i = 0;
-			IN_ADDR IP;
-			for(int i = 0; i < ServerInfo->h_length; ++i)
-			//ServerInfo->h_length
-			//while (ServerInfo->h_addr_list[i] != 0)
-			{
-				// 시작위치
-				IP.s_addr = *(u_long*)ServerInfo->h_addr_list[i];
-				printf("ip : %s\n" , inet_ntoa(IP));
-				i++;
-			}
+			break;
 		}
+
+		//int FirstNumber = 0;
+		//int SecondNumber = 0;
+		//char Operator = 0;
+		Data Packet;
+		memcpy(&Packet, Buffer, sizeof(Packet));
+
+		//memcpy(&FirstNumber, &Buffer[0], sizeof(int));
+		//memcpy(&SecondNumber, &Buffer[4], sizeof(int));
+		//Operator = Buffer[8];
+		long long Result = 0;
+
+		cout << Packet.FirstNumber << " ";
+
+
+		switch (Packet.Operator)
+		{
+		case 0:
+			Result = Packet.FirstNumber + Packet.SecondNumber;
+			cout << " + ";
+			break;
+		case 1:
+			Result = Packet.FirstNumber - Packet.SecondNumber;
+			cout << " - ";
+			break;
+		case 2:
+			Result = Packet.FirstNumber * Packet.SecondNumber;
+			cout << " * ";
+			break;
+		case 3:
+			Result = Packet.FirstNumber / Packet.SecondNumber;
+			cout << " / ";
+			break;
+		case 4:
+			Result = Packet.FirstNumber % Packet.SecondNumber;
+			cout << " % ";
+			break;
+		default:
+			Result = Packet.FirstNumber + Packet.SecondNumber;
+			cout << " + ";
+			break;
+		}
+		cout << Packet.SecondNumber << " = ";
+
+		cout << Result << endl;
+
+		char Message[8] = { 0, };
+		memcpy(Message, &Result, sizeof(Result));
+
+		send(ServerSocket, Message, (u_int)sizeof(Message), 0);
 	}
-	*/
-	char IPAddress[] = "223.130.200.107";
-	ServerInfo = gethostbyaddr(IPAddress, strlen(IPAddress), AF_INET);
-	if (ServerInfo)
-	{
-		if (ServerInfo->h_addrtype == AF_INET)
-		{
-			cout << ServerInfo->h_name << endl;
-		}
-		IN_ADDR IP;
-		for (int i = 0; i < ServerInfo->h_length; ++i)
-		{
-			IP.s_addr = *(u_long*)ServerInfo->h_addr_list[i];
-			printf("ip : %s\n", inet_ntoa(IP));
-		}
-	}
+	closesocket(ServerSocket);
 
 	WSACleanup();
 
 	return 0;
-};
+}

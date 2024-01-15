@@ -1,13 +1,25 @@
 #include <iostream>
-#include <WinSock2.h>
+#include <winsock2.h>
 #include <WS2tcpip.h>
-
-#pragma comment(lib, "ws2_32")
 
 using namespace std;
 
+#pragma comment(lib, "ws2_32")
+
+#pragma pack(push, 1)
+
+typedef struct _Data
+{
+	int FirstNumber;
+	int SecondNumber;
+	char Operator;
+} Data;
+#pragma pack(pop)
+
 int main()
 {
+	srand((u_int)(time(nullptr)));
+
 	WSAData wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -28,13 +40,36 @@ int main()
 	int ClientSockAddrLength = sizeof(ClinetSockAddr);
 	SOCKET ClientSocket = accept(ListenSocket, (struct sockaddr*)&ClinetSockAddr, &ClientSockAddrLength);
 
-	const char Message[] = "show me the money.";
-	send(ClientSocket, Message, (int)strlen(Message), 0);
+	while (true)
+	{
+		//char Message[9] = { 0, };
 
-	char Buffer[1024] = { 0, };
-	recv(ClientSocket, Buffer, 1024, 0);
+		Data Packet;
+		// 0 ~ 9999
+		Packet.FirstNumber = (rand() % 20000) - 10000;
+		// 1 ~ 9999
+		Packet.SecondNumber = (rand() % 20000) - 10000;
+		Packet.SecondNumber == 0 ? 1 : Packet.SecondNumber;
+		////[0][0][0][0][][][][][]
+		//memcpy(&Message[0], &FirstNumber, sizeof(int));
+		////[0][0][0][0][1][1][1][1][]
+		//memcpy(&Message[4], &SecondNumber, sizeof(int));
+		////[0][0][0][0][1][1][1][1][2]
+		Packet.Operator = rand() % 5;
 
-	cout << Buffer << endl;
+		send(ClientSocket, (char*)&Packet, (u_int)sizeof(Packet), 0);
+
+		char Buffer[1024] = { 0, };
+		int RecvByte = recv(ClientSocket, Buffer, 1024, 0);
+		if (RecvByte <= 0)
+		{
+			break;
+		}
+
+		long long Result = 0;
+		memcpy(&Result, Buffer, sizeof(Result));
+		cout << Result << endl;
+	}
 
 	closesocket(ClientSocket);
 	closesocket(ListenSocket);
